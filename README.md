@@ -53,7 +53,7 @@ In the real game, I would assume the creator has some cleverness to choosing his
 
 ## Scoring
 
-![](images/Scoring.png)
+![](images/Scoring.png)   
 _Yep, this guy shot down one of his fellow Americans. But, there was a [good reason](https://www.gijobs.com/pilot-shot-down-american-plane/)._
 
 More to follow...
