@@ -5,6 +5,9 @@ from lexicon import to_string
 
 
 class GuessOutcomeCode(Enum):
+    """
+    Enumerator representing possible outcomes of a single turn.
+    """
     UNDECIDED = 0
     VICTORY = 1
     DEFEAT = 2
@@ -50,6 +53,12 @@ class Player:
         print("'help': Show these instructions")
 
     def _handle_human_guess(self) -> GuessOutcomeCode:
+        """
+        Handles a guess from the human player, asking for input, then determining results.
+        Also processes any commands the player might type.
+
+        :return: outcome code
+        """
         guess_num = self.game_master.total_guesses - self.game_master.guesses_left + 1
         print(f"\nGuess {guess_num}/{self.game_master.total_guesses}")
         guess = input("> ")
@@ -90,8 +99,29 @@ class Player:
         return GuessOutcomeCode.UNDECIDED
 
     def _handle_robot_guess(self) -> GuessOutcomeCode:
+        """
+        Handles a guess by the AI player. The GameMaster implements a lot of the logic of the heuristic.
+        I supposed it makes more sense to be in this class, but oh well.
+
+        :return: the outcome code
+        """
         guess_num = self.game_master.total_guesses - self.game_master.guesses_left + 1
-        usable_words = self.game_master.get_usable_words()
+        # Choose the strategy. This logic is somewhat arbitrary; I arrived at it via tweaks.
+        green_count = 0
+        for g in self.game_master.definite_letters:
+            if g is not None:
+                green_count += 1
+        ignore_greens = False
+        ignore_yellows = False
+        strategy_type = "hone in"
+        if (self.game_master.guesses_left > 4) or ((self.game_master.guesses_left > 2) and green_count < 2):
+            ignore_greens = True
+            strategy_type = "position yellows"
+            if len(self.game_master.misplaced_letters) < 2:
+                ignore_yellows = True
+                strategy_type = "untried letters"
+
+        usable_words = self.game_master.get_usable_words(ignore_greens=ignore_greens, ignore_yellows=ignore_yellows)
         if len(usable_words) == 0:
             print(f"ERROR: no usable words, answer was {self.game_master.correct_word}")
             print("")
@@ -99,12 +129,12 @@ class Player:
             return GuessOutcomeCode.ERROR
         guess = self.game_master.select_usable_word(usable_words)
         success, gray_letters, yellow_letters, green_letters = self.game_master.handle_guess(guess)
-        print(f"\nGuess is: {guess}. Turn {guess_num} of {self.game_master.total_guesses}")
+        print(f"\nGuess was: {guess}. Turn {guess_num} of {self.game_master.total_guesses}. Strategy: {strategy_type}")
         if guess == self.game_master.correct_word:
             print(f"Victory!")
             return GuessOutcomeCode.VICTORY
         if guess_num >= self.game_master.total_guesses:
-            print("Out of guesses, game over. Defeat!")
+            print(f"Out of guesses, game over. Defeat! (Word was {self.game_master.correct_word})")
             return GuessOutcomeCode.DEFEAT
         print(f"Gray letters:   {to_string(gray_letters)}")
         print(f"Green letters:  {to_string(green_letters)}")
