@@ -1,4 +1,5 @@
 from typing import Tuple
+import argparse
 from lexicon import create_word_list, determine_word_scores, get_alphabet
 from game_master import GameMaster
 from player import Player, GuessOutcomeCode
@@ -19,13 +20,14 @@ def run_game() -> Tuple[bool, GuessOutcomeCode, int]:
     return game_master.guesses_left > 0, outcome_code, score
 
 
-def run_many_games(game_count):
+def run_many_games(ai_mode, game_count, debug_mode):
     global game_master, player
     GameMaster.word_list = create_word_list()
     GameMaster.word_scores = determine_word_scores(game_master.word_list)
     GameMaster.alphabet = get_alphabet()
     game_master.reset()
-    player.debug_mode = True
+    player.automatic_play = ai_mode
+    player.debug_mode = debug_mode
     player.print_help()
 
     victory_count = 0
@@ -51,4 +53,35 @@ def run_many_games(game_count):
     print(f"Total errors:    {error_count}")
     print(f"Average score:   {average_score}")
 
-run_many_games(100)
+
+parser = argparse.ArgumentParser(description='Wordle Game and Solver')
+parser.add_argument(
+    "--ai",
+    required=False,
+    action="store_true",
+    help="Run AI, rather than playing as yourself",
+)
+parser.add_argument(
+    "--games",
+    type=int,
+    required=False,
+    default=None,
+    help="How many games to play",
+)
+parser.add_argument(
+    "--debug",
+    required=False,
+    action="store_true",
+    help="Run in debug mode",
+)
+
+args = parser.parse_args()
+num_games = args.games
+if num_games is None:
+    if args.ai:
+        num_games = 100
+    else:
+        num_games = 1
+
+run_many_games(args.ai, num_games, args.debug)
+
