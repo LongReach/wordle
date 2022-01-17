@@ -224,3 +224,5 @@ Guess 5/6
 > noted
 You win!! Yay.
 ```
+
+And... with that, I think I've completely exhausted my interest in Wordle. :laughing:
