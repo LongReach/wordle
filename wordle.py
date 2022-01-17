@@ -20,10 +20,10 @@ def run_game() -> Tuple[bool, GuessOutcomeCode, int]:
     return game_master.guesses_left > 0, outcome_code, score
 
 
-def run_many_games(ai_mode, game_count, debug_mode):
+def run_many_games(ai_mode, game_count, scoring_method, debug_mode):
     global game_master, player
     GameMaster.word_list = create_word_list()
-    GameMaster.word_scores = determine_word_scores(game_master.word_list)
+    GameMaster.word_scores = determine_word_scores(game_master.word_list, scoring_method)
     GameMaster.alphabet = get_alphabet()
     game_master.reset()
     player.automatic_play = ai_mode
@@ -51,6 +51,7 @@ def run_many_games(ai_mode, game_count, debug_mode):
     print(f"Total victories: {victory_count}")
     print(f"Total defeats:   {defeat_count}")
     print(f"Total errors:    {error_count}")
+    print(f"% victories      {(float(victory_count) / float(game_count)) * 100.0}")
     print(f"Average score:   {average_score}")
 
 
@@ -74,6 +75,13 @@ parser.add_argument(
     action="store_true",
     help="Run in debug mode",
 )
+parser.add_argument(
+    "--scoring_method",
+    type=int,
+    required=False,
+    default=1,
+    help="Scoring method to use",
+)
 
 args = parser.parse_args()
 num_games = args.games
@@ -83,5 +91,5 @@ if num_games is None:
     else:
         num_games = 1
 
-run_many_games(args.ai, num_games, args.debug)
+run_many_games(args.ai, num_games, args.scoring_method, args.debug)
 
