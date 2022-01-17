@@ -1,5 +1,5 @@
 from random import randrange
-from typing import Tuple
+from typing import Tuple, Optional
 from lexicon import to_string
 
 class GameMaster:
@@ -12,6 +12,7 @@ class GameMaster:
 
     def __init__(self):
         self.guesses_left = 0
+        self.total_guesses = 0
         self.correct_word = None
         self.last_guess = None
         self.definite_letters = None
@@ -26,9 +27,8 @@ class GameMaster:
         """
         Call before starting a new game, to reset data.
         """
-        word_list_size = len(self.word_list)
         self.guesses_left = self.total_guesses = 6
-        self.correct_word = None if word_list_size == 0 else self.word_list[randrange(word_list_size)]
+        self.correct_word = self.choose_random_word()
         self.last_guess = None
         self.definite_letters = [None for i in range(5)]
         # Letters no longer usable, though they might have been correct choices earlier
@@ -42,6 +42,21 @@ class GameMaster:
         for c in self.alphabet:
             self.misplaced_letter_count[c] = 0
             self.misplaced_letter_map[c] = [False for i in range(5)]
+
+    def choose_random_word(self) -> Optional[str]:
+        """
+        Selects a random word from the lexicon, but one without an "s" as the last letter
+        :return: the word
+        """
+        word_list_size = len(self.word_list)
+        if word_list_size == 0:
+            return None
+        word = None
+        for n in range(100):
+            word = self.word_list[randrange(word_list_size)]
+            if word[4] != 's':
+                break
+        return word
 
     def get_score(self):
         return self.total_guesses - self.guesses_left
@@ -59,7 +74,7 @@ class GameMaster:
         :return: tuple containing (True if guess was acceptable,
         """
         if not self.allow_non_words and guess not in self.word_list:
-            print("Not a valid word!")
+            print(f"Not a valid word! (Answer is {self.correct_word})")
             return False, [], [], []
 
         """
@@ -189,18 +204,38 @@ class GameMaster:
         print("definite:", to_string(self.definite_letters, True))
         print("eliminated:", to_string(self.eliminated_letters, True))
 
-    def get_usable_words(self):
+    def get_usable_words(self, ignore_greens: bool = False, ignore_yellows: bool = False):
         """
         Returns a list of all words in master list that are still usable, given
         successfully placed, misplaced, and eliminated letters.
+
+        :param ignore_greens: if True, found words don't need to match known green letters
+        :param ignore_yellows: if True, found words don't need to match known yellow letters
         :return: the list
         """
         usable_words = []
+
+        if ignore_greens and ignore_yellows:
+            # We do something special in this case -- we're only interested in words with letters
+            # that haven't been tried already
+            for word in self.word_list:
+                keep = True
+                for i, c in enumerate(word):
+                    if (c in self.eliminated_letters) or (c in self.definite_letters) or (c in self.misplaced_letters):
+                        keep = False
+                        break
+                if keep:
+                    usable_words.append(word)
+            if len(usable_words) > 0:
+                return usable_words
+            # Oops, can't find any words with unused letters
+            usable_words = []
+
         for word in self.word_list:
             keep = True
             # Eliminate words with unusable letters or letters that don't align with "definite" letters
             for i, c in enumerate(word):
-                if (self.definite_letters[i] is not None) and (self.definite_letters[i] != c):
+                if (not ignore_greens) and (self.definite_letters[i] is not None) and (self.definite_letters[i] != c):
                     keep = False
                     break
                 if c in self.eliminated_letters:
@@ -209,34 +244,51 @@ class GameMaster:
                         break
 
             # Make sure misplaced letters are present in reasonable places
-            for let in self.misplaced_letters:
-                if let in word:
-                    # Letter is in the word, but is it an untried slot?
-                    found_slot = False
-                    pos_list = self.misplaced_letter_map.get(let)
-                    for i, tried in enumerate(pos_list):
-                        if not tried and word[i] == let:
-                            found_slot = True
+            if not ignore_yellows:
+                for let in self.misplaced_letters:
+                    if let in word:
+                        # Letter is in the word, but is it an untried slot?
+                        found_slot = False
+                        pos_list = self.misplaced_letter_map.get(let)
+                        for i, tried in enumerate(pos_list):
+                            if not tried and word[i] == let:
+                                found_slot = True
+                                break
+                        if not found_slot:
+                            keep = False
                             break
-                    if not found_slot:
+                    else:
                         keep = False
                         break
-                else:
-                    keep = False
-                    break
-            if keep:
+            if keep and word != self.last_guess:
                 usable_words.append(word)
         return usable_words
 
-    def select_usable_word(self, usable_words: list):
-        best_score = 0
+    def select_usable_word(self, usable_words: list, score_above: float = 95.0):
+        """
+        Given a set of usable words, select one at random. We want one whose score is
+        higher than score_above, if possible, but we'll take the highest scoring one.
+        :param usable_words: list of usable words
+        :param score_above: score to exceed (a percentage)
+        :return: the chosen word
+        """
+        high_scoring_words = []
+
         best_word = None
+        best_score = -1.0
         for word in usable_words:
             score = self.word_scores[word]
             if score > best_score:
                 best_score = score
                 best_word = word
-        return best_word
+            if score > score_above:
+                high_scoring_words.append(word)
+
+        if len(high_scoring_words) == 0:
+            return best_word
+
+        idx = randrange(len(high_scoring_words))
+        return high_scoring_words[idx]
 
     def _count_possible_slots_for_misplaced_letter(self, letter):
         """
