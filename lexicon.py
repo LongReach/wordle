@@ -170,3 +170,88 @@ def to_string(array, commas=False):
         else:
             ret_str += f"{comma_str}{let}"
     return ret_str
+
+def hint_helper(hint_params: str):
+    """
+    Provides a list of usable words for a real-life Wordle puzzle, given constraints included in
+    hint params. Example: "y5o-2rl1:c"
+
+    Part before the colon:
+    For each character in the string, if it's a letter alone, it's a yellow letter. If it's a letter
+    followed by a positive number, then it's a green letter at that position. If it's a letter followed
+    by a negative number, then it's a yellow letter NOT at the position.
+
+    Part after the colon:
+    All letters listed are grays
+
+    :param hint_params: the params string
+    """
+    param_sections = hint_params.split(":")
+
+    # process the gray letters specified
+    gray_letters = set()
+    if len(param_sections) > 1:
+        for c in param_sections[1]:
+            gray_letters.add(c)
+
+    # process the yellow and green letters specified
+    numerals = [chr(i) for i in range(ord("1"), ord("5") + 1)]
+    alphabet = get_alphabet()
+    green_letters = [None for i in range(5)]
+    yellow_letters = set()
+    yellow_letters_exclude_positions = {}
+    for c in alphabet:
+        yellow_letters_exclude_positions[c] = [False for i in range(5)]
+    idx = 0
+    while idx < len(param_sections[0]):
+        was_green = False
+        if hint_params[idx] not in alphabet:
+            # An error -- alphabet character not where expected
+            idx += 1
+            continue
+        if (idx < len(hint_params) - 1) and hint_params[idx+1] in numerals:
+            # A character with a positive number following, therefore green
+            pos = int(hint_params[idx+1]) - 1
+            green_letters[pos] = hint_params[idx]
+            was_green = True
+            idx += 2
+            continue
+        if not was_green:
+            # A yellow letter. Does negative number follow?
+            let = hint_params[idx]
+            yellow_letters.add(hint_params[idx])
+            if (idx < len(hint_params) - 2) and hint_params[idx + 1] == "-":
+                pos = int(hint_params[idx + 2]) - 1
+                yellow_letters_exclude_positions[let][pos] = True
+                idx += 3
+            else:
+                idx += 1
+
+    usable_words = []
+    word_list = create_word_list()
+    for word in word_list:
+        keep = True
+        for i, c in enumerate(word):
+            if (green_letters[i] is not None) and (green_letters[i] != c):
+                keep = False
+                break
+            if c in gray_letters:
+                keep = False
+                break
+        for let in yellow_letters:
+            if let not in word:
+                keep = False
+                break
+            for i, c in enumerate(word):
+                if c == let and yellow_letters_exclude_positions[let][i]:
+                    keep = False
+                    break
+        if keep:
+            usable_words.append(word)
+
+    print(f"Green letters: {to_string(green_letters)}")
+    print(f"Yellow letters: {to_string(yellow_letters, True)}")
+    print("Compatible words:")
+    for word in usable_words:
+        print(word)
+

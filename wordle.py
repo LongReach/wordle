@@ -1,6 +1,6 @@
 from typing import Tuple
 import argparse
-from lexicon import create_word_list, determine_word_scores, get_alphabet
+from lexicon import create_word_list, determine_word_scores, get_alphabet, hint_helper
 from game_master import GameMaster
 from player import Player, GuessOutcomeCode
 
@@ -55,7 +55,7 @@ def run_many_games(ai_mode, game_count, scoring_method, debug_mode):
     print(f"Average score:   {average_score}")
 
 
-parser = argparse.ArgumentParser(description='Wordle Game and Solver')
+parser = argparse.ArgumentParser(description='Wordle Game and Solver', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument(
     "--ai",
     required=False,
@@ -82,8 +82,25 @@ parser.add_argument(
     default=1,
     help="Scoring method to use",
 )
+parser.add_argument(
+    "--hint",
+    type=str,
+    required=False,
+    default=None,
+    help="Provide candidate words for a real world Wordle game, e.g. --hint y5o-2r-3:cs\n"
+         "Meanings (where 'c' represents a letter and 'n' a position number):\n"
+         "c   -> a yellow letter\n"
+         "c-n -> a yellow letter that's not at position n\n"
+         "cn  -> a green letter at position n\n"
+         "Anything after ':': a gray letter",
+)
 
 args = parser.parse_args()
+
+if args.hint is not None:
+    hint_helper(args.hint)
+    exit()
+
 num_games = args.games
 if num_games is None:
     if args.ai:

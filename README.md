@@ -29,7 +29,14 @@ To let the AI play:
 $ python3 wordle.py --ai
 ```
 
-To see other options:
+To get candidate words for a real-life Wordle game, use:
+```
+$ python3 wordle.py --hint CONSTRAINTS_STRING
+```
+
+![](images/NotCheating.png)
+
+To see other options or explanation of arguments:
 ```
 $ python3 wordle.py --help
 ```
